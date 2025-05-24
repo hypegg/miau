@@ -1,6 +1,7 @@
 import { WAMessage, WASocket } from "baileys";
 import { commands } from "../commands";
 import { logger } from "../config/logger";
+import t from "../i18n";
 
 export interface CommandHandler {
   execute: (
@@ -62,7 +63,7 @@ export const handleCommand = async (
     } else {
       // Command not found
       await socket.sendMessage(jid, {
-        text: `Command not found: ${command}. Type /help for available commands.`,
+        text: t("help.notFound", { command }),
       });
     }
   } catch (error) {
@@ -72,7 +73,7 @@ export const handleCommand = async (
       jid,
     });
     await socket.sendMessage(jid, {
-      text: "An error occurred while processing your command. Please try again.",
+      text: t("core.commandError"),
     });
   }
 };

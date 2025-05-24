@@ -74,7 +74,7 @@ class Logger {
 
   private formatTimestamp(): string {
     const now = new Date();
-    return now.toLocaleString("en-US", {
+    return now.toLocaleString(ENV.LOCALE || "en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

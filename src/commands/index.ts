@@ -18,8 +18,8 @@ export interface Command {
 // Help Command
 const help: Command = {
   name: "help",
-  description: t("commands.help.description"),
-  usage: t("commands.help.usage"),
+  description: t("help.description"),
+  usage: t("help.usage"),
   execute: async (socket: WASocket, message: WAMessage, args: string[]) => {
     const jid = message.key.remoteJid!;
 
@@ -30,7 +30,7 @@ const help: Command = {
 
       if (command) {
         await socket.sendMessage(jid, {
-          text: t("commands.commandDetails", {
+          text: t("help.commandDetails", {
             name: command.name,
             description: command.description,
             usage: command.usage,
@@ -38,14 +38,14 @@ const help: Command = {
         });
       } else {
         await socket.sendMessage(jid, {
-          text: t("commands.help.notFound", { command: commandName }),
+          text: t("help.notFound", { command: commandName }),
         });
       }
       return;
     }
 
     // General help message
-    let helpText = t("commands.help.availableCommands") + "\n\n";
+    let helpTextAvailableCommands = t("help.availableCommands") + "\n\n";
 
     // Get unique commands by filtering out aliases
     const uniqueCommands = Object.values(commands).filter((cmd, index, arr) => {
@@ -54,20 +54,20 @@ const help: Command = {
     });
 
     uniqueCommands.forEach((cmd) => {
-      helpText += `*/${cmd.name}*: ${cmd.description}\n`;
+      helpTextAvailableCommands += `*/${cmd.name}*: ${cmd.description}\n`;
     });
 
-    helpText += "\n" + t("commands.help.moreDetails");
+    helpTextAvailableCommands += "\n" + t("help.moreDetails");
 
-    await socket.sendMessage(jid, { text: helpText });
+    await socket.sendMessage(jid, { text: helpTextAvailableCommands });
   },
 };
 
 // Sticker Command
 const sticker: Command = {
   name: "sticker",
-  description: t("commands.sticker.description"),
-  usage: t("commands.sticker.usage"),
+  description: t("sticker.description"),
+  usage: t("sticker.usage"),
   execute: async (socket: WASocket, message: WAMessage, args: string[]) => {
     await handleStickerCommand(socket, message);
   },
@@ -76,8 +76,8 @@ const sticker: Command = {
 // Audio Command
 const audio: Command = {
   name: "audio",
-  description: t("commands.audio.description"),
-  usage: t("commands.audio.usage"),
+  description: t("audio.description"),
+  usage: t("audio.usage"),
   execute: async (socket: WASocket, message: WAMessage, args: string[]) => {
     await handleAudioCommand(socket, message, args);
   },
@@ -86,8 +86,8 @@ const audio: Command = {
 // Video Command
 const video: Command = {
   name: "video",
-  description: t("commands.video.description"),
-  usage: t("commands.video.usage"),
+  description: t("video.description"),
+  usage: t("video.usage"),
   execute: async (socket: WASocket, message: WAMessage, args: string[]) => {
     await handleVideoCommand(socket, message, args);
   },

@@ -25,6 +25,7 @@ export const ENV = {
     process.env.BOT_SYSTEM_PROMPT ||
     "You are ${BOT_NAME}, a helpful WhatsApp assistant. Keep responses concise and helpful.",
   BOT_LANGUAGE: validateLanguage(process.env.BOT_LANGUAGE), // Default language is English
+  LOCALE: process.env.LOCALE || "en-US", // Default locale is English (US) || "pt-BR" for Portuguese (Brazil) || "es-AR" for Spanish (Argentina)
 
   // Connection configuration
   WA_MARK_ONLINE_ON_CONNECT: process.env.WA_MARK_ONLINE_ON_CONNECT === "false",

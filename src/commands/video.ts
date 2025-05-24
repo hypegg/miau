@@ -39,7 +39,7 @@ export async function handleVideoCommand(
       // Send appropriate status update
       if (result.sendAsFile) {
         await socket.sendMessage(jid, {
-          text: "✅ Download complete! The video is large, so I'm sending it as a file. Please wait...",
+          text: t("video.downloadCompleteAsFile"),
         });
       } else {
         await socket.sendMessage(jid, {
@@ -65,14 +65,14 @@ export async function handleVideoCommand(
         errorMessage.includes("max-filesize")
       ) {
         await socket.sendMessage(jid, {
-          text: "❌ The video is too large to download (>100MB). Please try a shorter video or different URL.",
+          text: t("video.fileTooLarge"),
         });
       } else if (
         errorMessage.includes("No formats found") ||
         errorMessage.includes("not available")
       ) {
         await socket.sendMessage(jid, {
-          text: "❌ This video format is not supported or the video is not available. Please try a different URL.",
+          text: t("video.unsupportedFormat"),
         });
       } else {
         await socket.sendMessage(jid, {

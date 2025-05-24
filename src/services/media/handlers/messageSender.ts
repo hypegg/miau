@@ -49,7 +49,7 @@ export async function sendVideo(
     await socket.sendMessage(jid, {
       video: fileBuffer,
       mimetype: "video/mp4",
-      caption: t("media.videoSent"),
+      caption: t("video.videoSent"),
     });
 
     logger.info("Video message sent successfully");
@@ -85,7 +85,7 @@ export async function sendVideoFile(
       document: fileBuffer,
       fileName: fileName,
       mimetype: "video/mp4",
-      caption: t("media.videoFileSent", {
+      caption: t("video.videoFileSent", {
         size: fileSizeMB.toFixed(1),
       }),
     });
