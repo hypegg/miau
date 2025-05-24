@@ -11,7 +11,7 @@ import {
   getCachedGroupMetadata,
   groupCache,
   setCachedGroupMetadata,
-} from "../utils/groupMetadataCache";
+} from "../utils/core/groupMetadataCache";
 import { generateQR } from "./utils";
 
 // Connection manager class to handle socket lifecycle

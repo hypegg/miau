@@ -1,7 +1,8 @@
 import { WAMessage, WASocket } from "baileys";
 import { logger } from "../config/logger";
 import t from "../i18n";
-import { downloadYouTubeMedia, sendAudio } from "../services/media";
+import { downloadYouTubeMedia } from "../utils/media";
+import { sendAudio } from "../utils/message/";
 
 export async function handleAudioCommand(
   socket: WASocket,

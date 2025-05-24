@@ -1,8 +1,8 @@
+import { exec } from "child_process";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
-import { exec } from "child_process";
-import { logger } from "../../../config/logger";
+import { logger } from "../../config/logger";
 
 export const execAsync = promisify(exec);
 
@@ -40,5 +40,18 @@ export async function getVideoDuration(filePath: string): Promise<number> {
   } catch (error) {
     logger.warn("Could not get video duration, assuming 0:", error);
     return 0;
+  }
+}
+
+// Clean up temporary files
+export function cleanupFiles(...filePaths: string[]): void {
+  for (const filePath of filePaths) {
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (error) {
+        logger.warn(`Failed to delete temporary file ${filePath}:`, error);
+      }
+    }
   }
 }

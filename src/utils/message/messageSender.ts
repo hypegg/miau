@@ -1,9 +1,9 @@
 import { WASocket } from "baileys";
 import fs from "fs";
 import path from "path";
-import { logger } from "../../../config/logger";
-import { getFileSizeMB } from "../utils/fileUtils";
-import { t } from "../../../i18n";
+import { logger } from "../../config/logger";
+import { t } from "../../i18n";
+import { getFileSizeMB } from "../media/fileUtils";
 
 // Send downloaded audio to user
 export async function sendAudio(

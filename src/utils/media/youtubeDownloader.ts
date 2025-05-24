@@ -1,13 +1,9 @@
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
-import { logger } from "../../../config/logger";
-import {
-  DOWNLOADS_PATH,
-  generateFileName,
-  getFileSizeMB,
-} from "../utils/fileUtils";
-import { convertToMp4 } from "../utils/videoProcessor";
+import { logger } from "../../config/logger";
+import { DOWNLOADS_PATH, generateFileName, getFileSizeMB } from "./fileUtils";
+import { convertToMp4 } from "./videoProcessor";
 
 // Size limits
 const VIDEO_MESSAGE_LIMIT_MB = 15; // WhatsApp video message limit

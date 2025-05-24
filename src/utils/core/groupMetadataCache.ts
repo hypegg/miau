@@ -1,5 +1,5 @@
 import NodeCache from "node-cache";
-import { logger } from "../config";
+import { logger } from "../../config";
 import { GroupMetadata } from "baileys";
 
 // Initialize cache with 6 hours standard TTL

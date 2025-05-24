@@ -1,6 +1,6 @@
 import fs from "fs";
-import { logger } from "../../../config/logger";
-import { execAsync, getFileSizeMB } from "../utils/fileUtils";
+import { logger } from "../../config";
+import { execAsync, getFileSizeMB } from "../../utils/media";
 
 // Convert video to mp4 with minimal processing
 export async function convertToMp4(

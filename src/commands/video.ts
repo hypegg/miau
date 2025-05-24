@@ -1,11 +1,8 @@
 import { WAMessage, WASocket } from "baileys";
 import { logger } from "../config/logger";
-import {
-  downloadYouTubeMedia,
-  sendVideo,
-  sendVideoFile,
-} from "../services/media";
 import t from "../i18n";
+import { downloadYouTubeMedia } from "../utils/media/";
+import { sendVideo, sendVideoFile } from "../utils/message/";
 
 export async function handleVideoCommand(
   socket: WASocket,

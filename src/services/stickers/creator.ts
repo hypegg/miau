@@ -1,21 +1,22 @@
-import { downloadMediaMessage, isJidGroup, WAMessage, WASocket } from "baileys";
-import { exec } from "child_process";
+import { isJidGroup, WAMessage, WASocket } from "baileys";
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
-import { promisify } from "util";
 import { logger } from "../../config/logger";
 import t from "../../i18n";
 import { ENV } from "../../config/environment";
+import {
+  execAsync,
+  generateFileName,
+  cleanupFiles,
+} from "../../utils/media/fileUtils";
+import { extractMediaFromMessage } from "../../utils/media/messageUtils";
 
 // Metadata for stickers
 interface StickerMetadata {
   package: string;
   author: string;
 }
-
-// Convert exec to promise-based
-const execAsync = promisify(exec);
 
 // Path for storing temporary files
 const TMP_PATH = path.join(__dirname, "../../../storage/media");
@@ -30,75 +31,12 @@ if (!fs.existsSync(STICKER_PATH)) {
   fs.mkdirSync(STICKER_PATH, { recursive: true });
 }
 
-// Generate a unique file name
-function generateFileName(extension: string): string {
-  return `${Date.now()}_${Math.floor(Math.random() * 1000)}.${extension}`;
-}
-
-// Clean up temporary files
-function cleanupFiles(...filePaths: string[]): void {
-  for (const filePath of filePaths) {
-    if (fs.existsSync(filePath)) {
-      try {
-        fs.unlinkSync(filePath);
-      } catch (error) {
-        logger.warn(`Failed to delete temporary file ${filePath}:`, error);
-      }
-    }
-  }
-}
-
-// Extract media from message
-async function extractMediaFromMessage(message: WAMessage): Promise<{
-  buffer: Buffer;
-  type: string;
-  mime: string;
-  extension: string;
-} | null> {
-  if (!message.message) return null;
-
-  let type = "";
-  let mime = "";
-  let extension = "";
-
-  // Check for image
-  if (message.message.imageMessage) {
-    type = "image";
-    mime = message.message.imageMessage.mimetype || "image/jpeg";
-    extension = mime.split("/")[1];
-  }
-  // Check for video
-  else if (message.message.videoMessage) {
-    type = "video";
-    mime = message.message.videoMessage.mimetype || "video/mp4";
-    extension = "mp4";
-  }
-  // Check for document that's image or video
-  else if (
-    message.message.documentMessage &&
-    (message.message.documentMessage.mimetype?.startsWith("image/") ||
-      message.message.documentMessage.mimetype?.startsWith("video/"))
-  ) {
-    type = message.message.documentMessage.mimetype.startsWith("image/")
-      ? "image"
-      : "video";
-    mime = message.message.documentMessage.mimetype;
-    extension = mime.split("/")[1];
-  } else {
-    return null;
-  }
-
-  logger.debug(`Processing ${type} with mime ${mime}`);
-  const buffer = (await downloadMediaMessage(message, "buffer", {})) as Buffer;
-  return { buffer, type, mime, extension };
-}
-
 // Process image to WebP sticker
 async function processImageToSticker(
   buffer: Buffer,
   metadata: StickerMetadata
 ): Promise<string> {
-  const fileName = generateFileName("webp");
+  const fileName = generateFileName("sticker", "webp");
   const outputPath = path.join(STICKER_PATH, fileName);
 
   try {
@@ -134,9 +72,9 @@ async function processVideoToSticker(
   extension: string,
   metadata: StickerMetadata
 ): Promise<string> {
-  const inputFileName = generateFileName(extension);
+  const inputFileName = generateFileName("input", extension);
   const inputPath = path.join(TMP_PATH, inputFileName);
-  const outputFileName = generateFileName("webp");
+  const outputFileName = generateFileName("sticker", "webp");
   const outputPath = path.join(STICKER_PATH, outputFileName);
 
   try {
@@ -190,7 +128,7 @@ export async function createSticker(
       return;
     }
 
-    const { buffer, type, extension } = mediaData; // Get sticker metadata
+    const { buffer, type, extension } = mediaData;
     const metadata = getStickerMetadata(message);
 
     // Process media based on its type
@@ -224,7 +162,9 @@ export async function createSticker(
     );
   } finally {
     // Clean up temporary files
-    cleanupFiles(stickerPath);
+    if (stickerPath) {
+      cleanupFiles(stickerPath);
+    }
   }
 }
 

@@ -91,12 +91,7 @@ export const messageHandler = async (
 
           if (!shouldRespond && isGroup) {
             logger.whatsapp(
-              "Skipping group message due to configuration settings",
-              {
-                jid,
-                userId,
-                pushName: message.pushName,
-              }
+              "Skipping group message due to configuration settings"
             );
             return;
           }
