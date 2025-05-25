@@ -8,6 +8,7 @@ export const generateQR = (socket: WASocket): void => {
 
   socket.ev.on("connection.update", async ({ qr, connection }) => {
     if (qr) {
+      logger.info("Authentication required - generating QR code...");
       try {
         // Generate the QR code string
         const qrString = await qrcode.toString(qr, {
@@ -27,15 +28,6 @@ export const generateQR = (socket: WASocket): void => {
       } catch (error) {
         logger.error("Failed to generate QR code:", error);
       }
-    }
-
-    // Log connection status changes during QR process
-    if (connection === "connecting") {
-      logger.info("QR Code scanned, connecting...");
-    } else if (connection === "open") {
-      logger.success("Authentication successful! Connection established.");
-      // Remove the QR listener once connected
-      socket.ev.removeAllListeners("connection.update");
     }
   });
 };

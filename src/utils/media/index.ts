@@ -6,7 +6,6 @@ import {
   cleanupFiles,
 } from "./fileUtils";
 import { convertToMp4 } from "./videoProcessor";
-import { extractMediaFromMessage } from "./messageUtils";
 
 export {
   downloadYouTubeMedia,
@@ -15,5 +14,4 @@ export {
   convertToMp4,
   execAsync,
   cleanupFiles,
-  extractMediaFromMessage,
 };

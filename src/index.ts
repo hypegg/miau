@@ -24,16 +24,17 @@ async function startBot() {
 
     logger.success("Bot started successfully");
 
-    // Handle graceful shutdown
+    // Handle shutdown
     process.on("SIGINT", async () => {
-      logger.info("Received SIGINT, shutting down gracefully...");
-      await connectionManager.disconnect();
+      logger.info("Received SIGINT, shutting...");
+      //await connectionManager.disconnect();
       process.exit(0);
     });
 
+    // Handle termination
     process.on("SIGTERM", async () => {
-      logger.info("Received SIGTERM, shutting down gracefully...");
-      await connectionManager.disconnect();
+      logger.info("Received SIGTERM, shutting...");
+      //await connectionManager.disconnect();
       process.exit(0);
     });
   } catch (error) {

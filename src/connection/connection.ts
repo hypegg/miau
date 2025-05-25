@@ -1,17 +1,17 @@
-import { Boom } from "@hapi/boom";
-import makeWASocket, {
-  DisconnectReason,
-  useMultiFileAuthState,
-  WASocket,
-} from "baileys";
+import makeWASocket, { useMultiFileAuthState, WASocket } from "baileys";
 import { join } from "path";
 import P from "pino";
 import { ENV, logger } from "../config";
+import { msgRetryCounterCache } from "../services/messages/retryCache";
+import { storeMessage } from "../services/messages/store";
 import {
   getCachedGroupMetadata,
   groupCache,
   setCachedGroupMetadata,
 } from "../utils/core/groupMetadataCache";
+import { getMessage } from "../utils/core/message";
+import { jidManager } from "../utils/jids/jidManager";
+import { shouldReconnect } from "./connectionUtils";
 import { generateQR } from "./utils";
 
 // Connection manager class to handle socket lifecycle
@@ -66,6 +66,11 @@ class WhatsAppConnection {
         logger: P({
           level: "silent",
         }),
+        generateHighQualityLinkPreview: true, // Enable high quality link previews
+        markOnlineOnConnect: ENV.WA_MARK_ONLINE_ON_CONNECT,
+        shouldIgnoreJid: (jid: string) => {
+          return jidManager.shouldIgnoreJid(jid, socket.user?.id);
+        },
         cachedGroupMetadata: async (jid) => {
           const metadata = await getCachedGroupMetadata(jid);
           if (!metadata) {
@@ -88,24 +93,24 @@ class WhatsAppConnection {
           }
           return metadata;
         },
-        markOnlineOnConnect: ENV.WA_MARK_ONLINE_ON_CONNECT,
+        msgRetryCounterCache,
+        getMessage,
       });
 
       // Store the socket reference
       this.socket = socket;
 
-      // Generate QR code if needed
+      // Handle QR code and auth state
       if (!socket.authState.creds.registered) {
-        logger.info("Authentication required - generating QR code...");
         generateQR(socket);
       }
 
       // Handle connection events
       socket.ev.on("connection.update", async (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, lastDisconnect } = update;
 
         if (connection === "close") {
-          const shouldReconnect = this.shouldReconnect(lastDisconnect);
+          const reconnect = shouldReconnect(lastDisconnect);
 
           logger.info(
             `Connection closed due to ${
@@ -116,10 +121,7 @@ class WhatsAppConnection {
           // Clear the current socket reference
           this.socket = null;
 
-          if (
-            shouldReconnect &&
-            this.reconnectAttempts < this.maxReconnectAttempts
-          ) {
+          if (reconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             logger.info(
               `Reconnecting... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
@@ -138,8 +140,10 @@ class WhatsAppConnection {
                 error
               );
             }
-          } else if (!shouldReconnect) {
-            logger.info("Disconnected due to logged out, not reconnecting");
+          } else if (!reconnect) {
+            logger.info(
+              "Permanent disconnection (e.g. logged out), not reconnecting"
+            );
             this.reconnectAttempts = 0;
           } else {
             logger.error(
@@ -147,14 +151,14 @@ class WhatsAppConnection {
             );
             process.exit(1);
           }
+        } else if (connection === "connecting") {
+          logger.info("Connecting to WhatsApp...");
         } else if (connection === "open") {
           logger.success("WhatsApp connection established successfully");
           this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
 
           // Attach message handlers to the new socket
           this.attachMessageHandlers(socket);
-        } else if (connection === "connecting") {
-          logger.info("Connecting to WhatsApp...");
         }
       });
 
@@ -220,58 +224,6 @@ class WhatsAppConnection {
   }
 
   /**
-   * Determine if we should reconnect based on the disconnect reason
-   */
-  private shouldReconnect(lastDisconnect: any): boolean {
-    const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-
-    // Don't reconnect for permanent disconnections
-    const permanentDisconnections = [
-      DisconnectReason.loggedOut, // 401 - User logged out
-      DisconnectReason.badSession, // 500 - Session corrupted
-      DisconnectReason.forbidden, // 403 - Account forbidden/banned
-      DisconnectReason.multideviceMismatch, // 411 - Device mismatch
-    ];
-
-    // Always reconnect for these temporary issues
-    const temporaryDisconnections = [
-      DisconnectReason.connectionClosed, // 428 - Connection closed
-      DisconnectReason.connectionLost, // 408 - Connection lost
-      DisconnectReason.timedOut, // 408 - Timed out
-      DisconnectReason.unavailableService, // 503 - Service unavailable
-    ];
-
-    // Handle special cases
-    if (statusCode === DisconnectReason.connectionReplaced) {
-      // 440 - Connection replaced (another device connected)
-      logger.info("Connection replaced by another device");
-      return false;
-    }
-
-    if (statusCode === DisconnectReason.restartRequired) {
-      // 515 - Restart required
-      logger.info("WhatsApp server requested restart");
-      return true;
-    }
-
-    // Check if it's a permanent disconnection
-    if (permanentDisconnections.includes(statusCode)) {
-      return false;
-    }
-
-    // Check if it's a known temporary disconnection
-    if (temporaryDisconnections.includes(statusCode)) {
-      return true;
-    }
-
-    // For unknown status codes, default to reconnect (but log it)
-    logger.warn(
-      `Unknown disconnect reason: ${statusCode}, attempting to reconnect`
-    );
-    return true;
-  }
-
-  /**
    * Attach all registered message handlers to the socket
    */
   private attachMessageHandlers(socket: WASocket): void {
@@ -279,9 +231,23 @@ class WhatsAppConnection {
       `Attaching ${this.messageHandlers.length} message handlers to socket`
     );
 
-    // Attach messages.upsert handler
-    socket.ev.on("messages.upsert", async ({ messages }) => {
+    // Handle message upserts - new messages and updates
+    socket.ev.on("messages.upsert", async ({ messages, type }) => {
+      // Log message type (notify for new messages, append for history sync)
+      logger.debug(`Received messages.upsert of type ${type}`);
+
       for (const message of messages) {
+        // Store message in cache if it has an ID and message content
+        // Fixed: Check for message existence and proper structure
+        if (message.key?.id && message.key?.remoteJid && message.message) {
+          try {
+            storeMessage(message.key, message.message);
+          } catch (error) {
+            logger.error("Error storing message:", error);
+          }
+        }
+
+        // Call each registered message handler
         for (const handler of this.messageHandlers) {
           try {
             await handler(socket, message);
@@ -290,6 +256,35 @@ class WhatsAppConnection {
           }
         }
       }
+    });
+
+    // Handle message updates (read status, delete, etc.)
+    socket.ev.on("messages.update", async (updates) => {
+      logger.debug(`Received ${updates.length} message updates`);
+      for (const { key, update } of updates) {
+        logger.debug("Message update for:", { key, update });
+
+        // If the message was deleted, remove it from store
+        if (update.messageStubType === 1) {
+          // REVOKE type
+          try {
+            // You might want to implement a delete function in store.ts
+            logger.debug(`Message ${key.id} was deleted`);
+          } catch (error) {
+            logger.error("Error handling message deletion:", error);
+          }
+        }
+      }
+    });
+
+    // Handle message reaction updates
+    socket.ev.on("messages.reaction", (reactions) => {
+      //logger.debug("Message reactions received:", reactions);
+    });
+
+    // Handle receipt updates (read, delivery)
+    socket.ev.on("message-receipt.update", (receipts) => {
+      //logger.debug("Message receipt updates:", receipts);
     });
   }
 

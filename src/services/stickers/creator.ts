@@ -10,7 +10,7 @@ import {
   generateFileName,
   cleanupFiles,
 } from "../../utils/media/fileUtils";
-import { extractMediaFromMessage } from "../../utils/media/messageUtils";
+import { extractMediaFromMessage } from "../../utils/message/";
 
 // Metadata for stickers
 interface StickerMetadata {
