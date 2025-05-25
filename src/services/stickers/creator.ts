@@ -10,7 +10,11 @@ import {
   generateFileName,
   cleanupFiles,
 } from "../../utils/media/fileUtils";
-import { extractMediaFromMessage } from "../../utils/message/";
+import {
+  extractMediaFromMessage,
+  sendQuoteSticker,
+  sendQuoteText,
+} from "../../utils/message/";
 
 // Metadata for stickers
 interface StickerMetadata {
@@ -118,13 +122,7 @@ export async function createSticker(
     const mediaData = await extractMediaFromMessage(message);
 
     if (!mediaData) {
-      await socket.sendMessage(
-        jid,
-        {
-          text: t("sticker.noMediaFound"),
-        },
-        { quoted: message }
-      );
+      await sendQuoteText(socket, jid, t("sticker.noMediaFound"), message);
       return;
     }
 
@@ -143,23 +141,13 @@ export async function createSticker(
     }
 
     // Send the sticker
-    await socket.sendMessage(jid, {
-      sticker: fs.readFileSync(stickerPath),
-      // Add quoted message reference if not in a group
-      ...(isJidGroup(jid) ? {} : { quoted: message }),
-    });
+    await sendQuoteSticker(socket, jid, stickerPath, message);
 
     logger.info(`Successfully sent sticker to ${jid}`);
   } catch (error) {
     logger.error("Error in sticker creation process:", error);
     // Send error message to user
-    await socket.sendMessage(
-      jid,
-      {
-        text: t("sticker.processingError"),
-      },
-      { quoted: message }
-    );
+    await sendQuoteText(socket, jid, t("sticker.processingError"), message);
   } finally {
     // Clean up temporary files
     if (stickerPath) {

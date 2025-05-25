@@ -9,14 +9,15 @@ import { getFileSizeMB } from "../media/fileUtils";
 export async function sendAudio(
   socket: WASocket,
   jid: string,
-  filePath: string
+  filePath: string,
+  ptt: boolean = false // Set to true for push-to-talk audio
 ): Promise<void> {
   try {
     const fileBuffer = fs.readFileSync(filePath);
     const result = await socket.sendMessage(jid, {
       audio: fileBuffer,
       mimetype: "audio/ogg; codecs=opus",
-      ptt: false, // Set to true for push-to-talk audio
+      ptt: ptt,
     });
 
     if (!result) {
@@ -38,7 +39,8 @@ export async function sendAudio(
 export async function sendVideo(
   socket: WASocket,
   jid: string,
-  filePath: string
+  filePath: string,
+  caption?: string
 ): Promise<void> {
   try {
     const fileBuffer = fs.readFileSync(filePath);
@@ -49,7 +51,7 @@ export async function sendVideo(
     await socket.sendMessage(jid, {
       video: fileBuffer,
       mimetype: "video/mp4",
-      caption: t("video.videoSent"),
+      caption: caption,
     });
 
     logger.info("Video message sent successfully");
@@ -70,7 +72,8 @@ export async function sendVideo(
 export async function sendVideoFile(
   socket: WASocket,
   jid: string,
-  filePath: string
+  filePath: string,
+  caption?: string
 ): Promise<void> {
   try {
     const fileBuffer = fs.readFileSync(filePath);
@@ -81,13 +84,18 @@ export async function sendVideoFile(
       `Sending video file: ${fileName} (${fileSizeMB.toFixed(2)} MB)`
     );
 
+    if (!caption) {
+      caption = t("video.videoFileSent", {
+        size: fileSizeMB.toFixed(1),
+      });
+    }
+
+    // Send the video file as a document
     await socket.sendMessage(jid, {
       document: fileBuffer,
       fileName: fileName,
       mimetype: "video/mp4",
-      caption: t("video.videoFileSent", {
-        size: fileSizeMB.toFixed(1),
-      }),
+      caption: caption,
     });
 
     logger.debug("Video file sent successfully");
@@ -100,6 +108,35 @@ export async function sendVideoFile(
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
+    throw error;
+  }
+}
+
+// Send image to user
+export async function sendImage(
+  socket: WASocket,
+  jid: string,
+  filePath: string,
+  caption?: string
+): Promise<void> {
+  try {
+    const fileBuffer = fs.readFileSync(filePath);
+    const result = await socket.sendMessage(jid, {
+      image: fileBuffer,
+      caption: caption,
+    });
+
+    if (!result) {
+      throw new Error("Failed to send image message");
+    }
+
+    logger.info("Image message sent successfully");
+
+    // Clean up the file after successful sending
+    fs.unlinkSync(filePath);
+  } catch (error) {
+    logger.error("Error sending image:", error);
+    // Don't delete the file if sending failed
     throw error;
   }
 }
