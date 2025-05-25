@@ -3,7 +3,7 @@ import { join } from "path";
 import P from "pino";
 import { ENV, logger } from "../config";
 import { msgRetryCounterCache } from "../services/messages/retryCache";
-import { storeMessage } from "../services/messages/store";
+import { deleteStoreMessage, storeMessage } from "../services/messages/store";
 import {
   getCachedGroupMetadata,
   groupCache,
@@ -262,14 +262,13 @@ class WhatsAppConnection {
     socket.ev.on("messages.update", async (updates) => {
       logger.debug(`Received ${updates.length} message updates`);
       for (const { key, update } of updates) {
-        logger.debug("Message update for:", { key, update });
+        //logger.debug("Message update for:", { key, update });
 
         // If the message was deleted, remove it from store
         if (update.messageStubType === 1) {
           // REVOKE type
           try {
-            // You might want to implement a delete function in store.ts
-            logger.debug(`Message ${key.id} was deleted`);
+            await deleteStoreMessage(key);
           } catch (error) {
             logger.error("Error handling message deletion:", error);
           }

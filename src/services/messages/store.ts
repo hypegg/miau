@@ -60,5 +60,22 @@ export async function getStoredMessage(
   }
 }
 
+export async function deleteStoreMessage(key: WAMessageKey): Promise<void> {
+  try {
+    if (!key.id || !key.remoteJid) {
+      return;
+    }
+    const storeKey = formatKey(key);
+    const deleted = messageStore.delete(storeKey);
+    if (deleted) {
+      logger.debug(`Deleted message with key: ${storeKey}`);
+    } else {
+      logger.debug(`No message found to delete for key: ${storeKey}`);
+    }
+  } catch (error) {
+    logger.error("Error deleting message:", error);
+  }
+}
+
 // Export for backward compatibility
 export { getStoredMessage as getMessage };
