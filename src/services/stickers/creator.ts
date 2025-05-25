@@ -1,158 +1,89 @@
-import { isJidGroup, WAMessage, WASocket } from "baileys";
+/** Service for converting images and videos into WhatsApp-compatible WebP stickers */
+
+import { WAMessage, WASocket } from "baileys";
 import fs from "fs";
 import path from "path";
-import sharp from "sharp";
 import { logger } from "../../config/logger";
 import t from "../../i18n";
-import { ENV } from "../../config/environment";
-import {
-  execAsync,
-  generateFileName,
-  cleanupFiles,
-} from "../../utils/media/fileUtils";
+import Sticker, { StickerTypes } from "./stickerFormater";
 import {
   extractMediaFromMessage,
   sendQuoteSticker,
   sendQuoteText,
-} from "../../utils/message/";
+} from "../../utils/message";
+import { ENV } from "../../config";
+import { generateFileName } from "../../utils/media";
 
-// Metadata for stickers
-interface StickerMetadata {
-  package: string;
-  author: string;
-}
+const STICKER_ID = "1025"; // Default sticker ID
+const STICKER_QUALITY = 80;
 
 // Path for storing temporary files
-const TMP_PATH = path.join(__dirname, "../../../storage/media");
-const STICKER_PATH = path.join(TMP_PATH, "stickers");
+const TEMP_MEDIA_PATH = path.join(__dirname, "../../../storage/media");
+const STICKER_PATH = path.join(TEMP_MEDIA_PATH, "stickers");
 
-// Create the directories if they don't exist
-if (!fs.existsSync(TMP_PATH)) {
-  fs.mkdirSync(TMP_PATH, { recursive: true });
-}
+// Ensures required directories exist for sticker processing
+function ensureDirectoriesExist(): void {
+  if (!fs.existsSync(TEMP_MEDIA_PATH)) {
+    fs.mkdirSync(TEMP_MEDIA_PATH, { recursive: true });
+  }
 
-if (!fs.existsSync(STICKER_PATH)) {
-  fs.mkdirSync(STICKER_PATH, { recursive: true });
-}
-
-// Process image to WebP sticker
-async function processImageToSticker(
-  buffer: Buffer,
-  metadata: StickerMetadata
-): Promise<string> {
-  const fileName = generateFileName("sticker", "webp");
-  const outputPath = path.join(STICKER_PATH, fileName);
-
-  try {
-    await sharp(buffer)
-      .resize(512, 512, {
-        fit: "contain",
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .webp({ quality: 80 })
-      // Add metadata separately
-      .withMetadata({
-        exif: {
-          IFD0: {
-            ImageDescription: JSON.stringify({
-              "sticker-pack-name": metadata.package,
-              "sticker-pack-publisher": metadata.author,
-            }),
-          },
-        },
-      })
-      .toFile(outputPath);
-
-    return outputPath;
-  } catch (error) {
-    logger.error("Error converting image to sticker:", error);
-    throw error;
+  if (!fs.existsSync(STICKER_PATH)) {
+    fs.mkdirSync(STICKER_PATH, { recursive: true });
   }
 }
 
-// Process video to animated WebP sticker
-async function processVideoToSticker(
-  buffer: Buffer,
-  extension: string,
-  metadata: StickerMetadata
-): Promise<string> {
-  const inputFileName = generateFileName("input", extension);
-  const inputPath = path.join(TMP_PATH, inputFileName);
-  const outputFileName = generateFileName("sticker", "webp");
-  const outputPath = path.join(STICKER_PATH, outputFileName);
+// Initialize directories
+ensureDirectoriesExist();
 
-  try {
-    // Save buffer to file for ffmpeg processing
-    fs.writeFileSync(inputPath, buffer);
-
-    // Extract frames and convert to animated WebP (limit to 5 seconds)
-    await execAsync(
-      `ffmpeg -y -i "${inputPath}" -t 5 -vf "scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000" -c:v libwebp -lossless 0 -compression_level 6 -q:v 80 -loop 0 -preset default -an -vsync 0 -metadata "sticker-pack-name=${metadata.package}" -metadata "sticker-pack-publisher=${metadata.author}" "${outputPath}"`
-    );
-
-    // Cleanup input file
-    cleanupFiles(inputPath);
-    return outputPath;
-  } catch (error) {
-    cleanupFiles(inputPath);
-    logger.error("Error converting video to animated sticker:", error);
-    throw error;
-  }
-}
-
-// Get user details from message
-function getStickerMetadata(message: WAMessage): StickerMetadata {
-  const authorName = message.pushName || "unknown";
-  return {
-    package: ENV.BOT_NAME,
-    author: authorName,
-  };
-}
-
-// Convert media to sticker
+/** Creates a static or animated sticker from image or video media */
 export async function createSticker(
   socket: WASocket,
   message: WAMessage
 ): Promise<void> {
   const jid = message.key.remoteJid!;
-  let stickerPath = "";
+  let stickerFilePath = "";
 
   try {
-    // Extract media from message
+    // extract media from the message
     const mediaData = await extractMediaFromMessage(message);
 
     if (!mediaData) {
-      await sendQuoteText(socket, jid, t("sticker.noMediaFound"), message);
+      await sendQuoteText(socket, jid, t("sticker.noMedia"), message);
       return;
     }
 
-    const { buffer, type, extension } = mediaData;
-    const metadata = getStickerMetadata(message);
+    const { buffer, type, mime, extension } = mediaData;
 
-    // Process media based on its type
-    if (type === "image") {
-      logger.debug("Processing image to sticker");
-      stickerPath = await processImageToSticker(buffer, metadata);
-    } else if (type === "video") {
-      logger.debug("Processing video to sticker");
-      stickerPath = await processVideoToSticker(buffer, extension, metadata);
-    } else {
-      throw new Error(`Unsupported media type: ${type}`);
-    }
+    const sticker = new Sticker(buffer, {
+      pack: ENV.BOT_NAME,
+      author: message.pushName || "Unknown",
+      type: StickerTypes.DEFAULT,
+      id: STICKER_ID,
+      quality: STICKER_QUALITY,
+    });
 
-    // Send the sticker
-    await sendQuoteSticker(socket, jid, stickerPath, message);
+    logger.debug("Creating sticker with options:", {
+      pack: ENV.BOT_NAME,
+      author: message.pushName || "Unknown",
+      type: StickerTypes.DEFAULT,
+      id: STICKER_ID,
+      quality: STICKER_QUALITY,
+    });
 
-    logger.info(`Successfully sent sticker to ${jid}`);
+    const outputFileName = generateFileName("sticker", extension);
+
+    logger.debug("Output file name:", outputFileName);
+
+    stickerFilePath = path.join(STICKER_PATH, outputFileName);
+    await sticker.toFile(stickerFilePath);
+
+    logger.debug("Sticker created at:", stickerFilePath);
+
+    sendQuoteSticker(socket, jid, stickerFilePath, message);
+
+    logger.debug("Sticker sent successfully");
   } catch (error) {
-    logger.error("Error in sticker creation process:", error);
-    // Send error message to user
-    await sendQuoteText(socket, jid, t("sticker.processingError"), message);
-  } finally {
-    // Clean up temporary files
-    if (stickerPath) {
-      cleanupFiles(stickerPath);
-    }
+    logger.error(`Error creating sticker: ${error}`);
   }
 }
 

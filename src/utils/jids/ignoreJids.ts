@@ -24,7 +24,7 @@ export class JidIgnoreManager {
 
     // Bot's own messages (prevent self-loops)
     if (botJid && jid.includes(botJid.split(":")[0])) {
-      logger.debug(`Ignoring own message from ${jid}`);
+      logger.debug(`Ignoring own message or update from ${jid}`);
       return true;
     }
 
