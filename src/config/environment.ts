@@ -27,6 +27,7 @@ export const ENV = {
   BOT_LANGUAGE: validateLanguage(process.env.BOT_LANGUAGE), // Default language is English
   LOCALE: process.env.LOCALE || "en-US", // Default locale is English (US) || "pt-BR" for Portuguese (Brazil) || "es-AR" for Spanish (Argentina)
   IGNORED_JIDS: process.env.IGNORED_JIDS || "",
+  STICKER_QUALITY: parseInt(process.env.STICKER_QUALITY || "80"),
 
   // Connection configuration
   WA_MARK_ONLINE_ON_CONNECT: process.env.WA_MARK_ONLINE_ON_CONNECT === "false",

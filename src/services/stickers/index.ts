@@ -1,3 +1,5 @@
 import { createSticker } from "./creator";
+import { extractMetadata } from "./utils";
+import { StickerOptions } from "./stickerBuilder";
 
-export { createSticker };
+export { createSticker, extractMetadata, StickerOptions };

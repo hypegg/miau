@@ -17,6 +17,14 @@ export const stickerTranslations = {
     noMediaFound: "❌ No media found in the message.",
     processingError:
       "❌ Failed to create sticker. Please try again with a different media.",
+    fileTooLarge: "❌ File too large. Please send a smaller image or video.",
+    mediaExtractionTimeout: "❌ Media extraction timed out. Please try again.",
+    invalidEmojis:
+      "❌ Invalid emojis provided. Please use 1-3 emojis only, separated by commas or spaces.",
+    success: "*Sticker successfully created and sent.*\n",
+    pack: "*Sticker pack:* {pack}",
+    author: "*Sticker author:* {author}",
+    emojis: "*Emojis:* {emojis}",
   },
   es: {
     // Command metadata
@@ -35,6 +43,12 @@ export const stickerTranslations = {
     noMediaFound: "❌ No se encontró media en el mensaje.",
     processingError:
       "❌ Error al crear el sticker. Por favor intenta de nuevo con un media diferente.",
+    fileTooLarge:
+      "❌ Archivo demasiado grande. Por favor envía una imagen o video más pequeño.",
+    mediaExtractionTimeout:
+      "❌ Tiempo de extracción de medios agotado. Por favor intenta de nuevo.",
+    invalidEmojis:
+      "❌ Emojis inválidos proporcionados. Por favor usa solo 1-3 emojis, separados por comas o espacios.",
   },
   pt: {
     // Command metadata
@@ -53,5 +67,11 @@ export const stickerTranslations = {
     noMediaFound: "❌ Nenhuma mídia encontrada na mensagem.",
     processingError:
       "❌ Falha ao criar sticker. Por favor tente novamente com uma mídia diferente.",
+    fileTooLarge:
+      "❌ Arquivo muito grande. Por favor envie uma imagem ou vídeo menor.",
+    mediaExtractionTimeout:
+      "❌ Tempo de extração de mídia esgotado. Por favor, tente novamente.",
+    invalidEmojis:
+      "❌ Emojis inválidos fornecidos. Por favor, use apenas 1-3 emojis, separados por vírgulas ou espaços.",
   },
 } as const;

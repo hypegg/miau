@@ -1,36 +1,33 @@
 import { WAMessage, WASocket } from "baileys";
 import { logger } from "../config/logger";
-import { createSticker } from "../services/stickers";
 import t from "../i18n";
+import { createSticker } from "../services/stickers";
 
 export async function handleStickerCommand(
   socket: WASocket,
-  message: WAMessage
+  message: WAMessage,
+  args: string[]
 ): Promise<void> {
+  const jid = message.key.remoteJid!;
+
   try {
-    const jid = message.key.remoteJid!;
     let targetMessage = message;
 
-    // Check if the message is a reply to another message
+    // Extract target message (quoted or mentioned)
     if (message.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
       logger.debug("Processing quoted message for sticker creation");
-      // Use the quoted message as the target for sticker creation
-      const quotedMessage = {
+      targetMessage = {
         ...message,
-        message:
-          message.message?.extendedTextMessage?.contextInfo?.quotedMessage,
-      };
-      targetMessage = quotedMessage as WAMessage;
-    }
-    // Check if the message mentions another message
-    else if (message.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
+        message: message.message.extendedTextMessage.contextInfo.quotedMessage,
+      } as WAMessage;
+    } else if (
+      message.message?.extendedTextMessage?.contextInfo?.mentionedJid
+    ) {
       logger.debug("Processing mentioned message for sticker creation");
-
-      // Get the message quoted or referenced in the mention
       const quotedMessageContext =
-        message.message?.extendedTextMessage?.contextInfo;
+        message.message.extendedTextMessage.contextInfo;
+
       if (quotedMessageContext?.quotedMessage) {
-        logger.debug("Found quoted message in mention context");
         targetMessage = {
           key: {
             remoteJid: jid,
@@ -40,37 +37,28 @@ export async function handleStickerCommand(
           message: quotedMessageContext.quotedMessage,
         } as WAMessage;
       } else {
-        logger.warn("No quoted message found in mention context");
-        await socket.sendMessage(jid, {
-          text: t("sticker.noMediaInMention"),
-        });
+        await socket.sendMessage(jid, { text: t("sticker.noMediaInMention") });
         return;
       }
     }
 
-    // Check if the target message contains media
+    // Pre-validate media presence
     if (
       !targetMessage.message?.imageMessage &&
       !targetMessage.message?.videoMessage &&
       !targetMessage.message?.documentMessage
     ) {
-      await socket.sendMessage(jid, {
-        text: t("sticker.noMedia"),
-      });
+      await socket.sendMessage(jid, { text: t("sticker.noMedia") });
       return;
     }
 
-    await socket.sendMessage(jid, {
-      text: t("sticker.creating"),
-    });
+    // Send processing message
+    await socket.sendMessage(jid, { text: t("sticker.creating") });
 
     // Create and send the sticker
-    await createSticker(socket, targetMessage);
+    await createSticker(socket, targetMessage, message, args);
   } catch (error) {
     logger.error("Error handling sticker command:", error);
-    const jid = message.key.remoteJid!;
-    await socket.sendMessage(jid, {
-      text: t("sticker.error"),
-    });
+    await socket.sendMessage(jid, { text: t("sticker.error") });
   }
 }

@@ -69,7 +69,7 @@ const sticker: Command = {
   description: t("sticker.description"),
   usage: t("sticker.usage"),
   execute: async (socket: WASocket, message: WAMessage, args: string[]) => {
-    await handleStickerCommand(socket, message);
+    await handleStickerCommand(socket, message, args);
   },
 };
 
