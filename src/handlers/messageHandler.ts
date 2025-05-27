@@ -74,7 +74,7 @@ export const messageHandler = async (
             [
               "Message Received:",
               `  Type: ${messageType}`,
-              `  From: ${userId}`,
+              `  From: ${message.pushName || userId}`,
               `  Chat: ${jid}`,
               `  Group: ${isGroup}`,
               `  Time: ${timestamp}`,

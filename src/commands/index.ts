@@ -54,7 +54,7 @@ const help: Command = {
     });
 
     uniqueCommands.forEach((cmd) => {
-      helpTextAvailableCommands += `*/${cmd.name}*: ${cmd.description}\n`;
+      helpTextAvailableCommands += `\`/${cmd.name}\`: ${cmd.description}\n`;
     });
 
     helpTextAvailableCommands += "\n" + t("help.moreDetails");
@@ -65,7 +65,7 @@ const help: Command = {
 
 // Sticker Command
 const sticker: Command = {
-  name: "sticker",
+  name: t("sticker.name"),
   description: t("sticker.description"),
   usage: t("sticker.usage"),
   execute: async (socket: WASocket, message: WAMessage, args: string[]) => {
@@ -75,7 +75,7 @@ const sticker: Command = {
 
 // Audio Command
 const audio: Command = {
-  name: "audio",
+  name: t("audio.name"),
   description: t("audio.description"),
   usage: t("audio.usage"),
   execute: async (socket: WASocket, message: WAMessage, args: string[]) => {
@@ -85,7 +85,7 @@ const audio: Command = {
 
 // Video Command
 const video: Command = {
-  name: "video",
+  name: t("video.name"),
   description: t("video.description"),
   usage: t("video.usage"),
   execute: async (socket: WASocket, message: WAMessage, args: string[]) => {
@@ -96,6 +96,7 @@ const video: Command = {
 // Add all commands to the commands object
 export const commands: Record<string, Command> = {
   help,
+  h: help, // Alias for help
   sticker,
   s: sticker, // Alias for sticker
   audio,
